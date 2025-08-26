@@ -2,540 +2,132 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Transforma Tus Reseñas de Google Maps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Aviator - Dashboard de Análisis</title>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/brain.js@2.0.0-beta/dist/browser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --google-blue: #4285F4;
-            --google-red: #DB4437;
-            --google-yellow: #F4B400;
-            --google-green: #0F9D58;
-            --light-gray: #f0f0f0;
-            --medium-gray: #cccccc;
-            --dark-gray: #333333;
-            --text-color: #202124;
-            --background-color: #ffffff;
-            --accent-color: var(--google-green); /* Verde para un tono positivo y de crecimiento */
-            --service-color: #673AB7; /* Un color distintivo para tu servicio */
-        }
-
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: 'Roboto', Arial, sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            line-height: 1.5;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .app-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .slide {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center; /* Centrado vertical */
-            padding: 20px;
-            box-sizing: border-box;
-            text-align: center;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateX(100%);
-            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out, visibility 0s 0.5s;
-            background-color: var(--background-color);
-        }
-
-        .slide.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateX(0);
-            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out, visibility 0s 0s;
-            z-index: 1;
-        }
-        
-        .slide.previous {
-            transform: translateX(-100%);
-            z-index: 0;
-        }
-
-        .slide h2 {
-            font-size: 1.6em;
-            color: var(--text-color);
-            margin-bottom: 10px;
-            margin-top: 0;
-        }
-        .slide h3 {
-            font-size: 1.2em;
-            color: var(--accent-color);
-            margin-bottom: 15px;
-        }
-        
-        .slide p {
-            font-size: 0.95em;
-            margin-bottom: 10px;
-            max-width: 90%;
-        }
-        .slide .slide-text {
-            font-size: 0.9em;
-            color: #555;
-            margin-top: 15px;
-            font-style: italic;
-        }
-        
-        .visual-area {
-            padding: 10px;
-            width: 100%;
-            max-width: 340px;
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px; /* Para dar espacio a los elementos visuales */
-        }
-        
-        /* Elementos de Google Maps Mockup */
-        .gmaps-profile-mock {
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            width: 95%;
-            max-width: 300px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            font-size: 0.85em;
-        }
-        .gmaps-profile-mock .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .gmaps-profile-mock .profile-pic {
-            width: 40px; height: 40px;
-            background-color: var(--medium-gray);
-            border-radius: 50%;
-            margin-right: 10px;
-            display:flex; align-items:center; justify-content:center;
-            font-size: 1.5em; color:white;
-        }
-        .gmaps-profile-mock .name { font-weight: bold; font-size: 1.1em; color: var(--google-blue);}
-        .gmaps-profile-mock .rating-summary { display: flex; align-items: center; font-size:1.1em; }
-        .gmaps-profile-mock .stars-big { font-size:1.5em; color:var(--google-yellow); margin-right:5px; }
-        .gmaps-profile-mock .review-count { font-size: 0.9em; color: #666; margin-left: 5px;}
-
-        .review-item {
-            background-color: #f9f9f9;
-            padding: 8px;
-            border-radius: 5px;
-            margin-bottom: 8px;
-            text-align: left;
-            border-left: 3px solid;
-            animation: fadeInReview 0.5s ease-out forwards;
-            opacity:0;
-        }
-        .review-item:nth-child(1) { animation-delay: 0.2s; }
-        .review-item:nth-child(2) { animation-delay: 0.4s; }
-        .review-item:nth-child(3) { animation-delay: 0.6s; }
-
-        @keyframes fadeInReview {
-            from { opacity:0; transform: translateY(10px); }
-            to { opacity:1; transform: translateY(0); }
-        }
-
-        .review-item.positive { border-left-color: var(--google-green); }
-        .review-item.neutral { border-left-color: var(--google-yellow); }
-        .review-item.negative { border-left-color: var(--google-red); }
-        .review-item .stars-small { font-size:0.8em; margin-bottom:3px; }
-        .review-item p { font-size:0.9em; margin:0; color: #333; }
-
-        .customer-icon {
-            font-size: 2em; margin: 5px;
-            transition: transform 0.3s ease;
-        }
-        .customer-icon.doubtful { opacity: 0.7; }
-        .customer-icon.happy { color: var(--google-green); }
-
-        /* Elementos del servicio de filtro */
-        .feedback-form-mock {
-            background-color: var(--service-color);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%; max-width: 280px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        .feedback-form-mock p { font-size: 1em; margin-bottom: 15px; }
-        .feedback-stars { display: flex; justify-content: center; gap: 5px; margin-bottom:15px; }
-        .feedback-stars .star-selectable { font-size: 2em; color: rgba(255,255,255,0.5); cursor:pointer; }
-        .feedback-stars .star-selectable:hover, .feedback-stars .star-selectable.selected { color: var(--google-yellow); }
-        
-        .flow-arrow {
-            font-size: 2em;
-            color: var(--accent-color);
-            margin: 10px 0;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
-
-        .internal-resolution-mock, .google-redirect-mock {
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            font-size: 0.9em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .internal-resolution-mock { background-color: #e8eaf6; color: #3f51b5; border: 1px solid #3f51b5;} /* Indigo */
-        .google-redirect-mock { background-color: #e6f4ea; color: var(--google-green); border: 1px solid var(--google-green);}
-
-        .no-delete-icon {
-            display: flex; align-items: center; justify-content:center; gap: 5px;
-            font-size: 0.8em; color: var(--google-red);
-            margin-top:10px; padding: 5px; border: 1px dashed var(--google-red); border-radius: 5px;
-        }
-        .no-delete-icon svg { width: 16px; height: 16px; fill: var(--google-red); }
-
-        .graph-mock {
-            width: 150px; height: 80px;
-            border: 1px solid var(--medium-gray);
-            background: repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 5px, #e0e0e0 5px, #e0e0e0 10px);
-            position:relative;
-            margin-top: 10px;
-        }
-        .graph-mock .bar {
-            position:absolute; bottom:0; width:30px; background-color: var(--accent-color);
-            animation: growBar 1s ease-out;
-        }
-        .graph-mock .bar1 { left: 20px; height: 40%; animation-delay: 0.1s; }
-        .graph-mock .bar2 { left: 60px; height: 75%; animation-delay: 0.3s; }
-        @keyframes growBar { from { height: 0; } to { /* height set by inline style or class */ } }
-
-        .cta-button {
-            background-color: var(--service-color); /* Usar el color del servicio para el CTA */
-            color: white; padding: 12px 25px; border-radius: 5px;
-            text-decoration: none; font-size: 1.1em; font-weight: bold; display: inline-block; margin-top: 20px;
-        }
-        .cta-button:hover { opacity: 0.9; }
-
-        .progress-dots {
-            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 8px; z-index: 5;
-        }
-        .dot {
-            width: 10px; height: 10px; background-color: var(--medium-gray);
-            border-radius: 50%; transition: background-color 0.3s ease;
-        }
-        .dot.active { background-color: var(--accent-color); }
-        
-        /* Iconos SVG */
-        .icon { width: 24px; height: 24px; }
-        .icon-small { width: 18px; height: 18px; }
-
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #chart { max-width: 800px; margin: 20px auto; }
+        #predictions { margin: 20px; padding: 10px; border: 1px solid #ccc; }
+        #signals { list-style-type: none; padding: 0; }
+        #signals li { padding: 5px; background: #f0f0f0; margin: 5px 0; }
     </style>
 </head>
 <body>
-    <!-- SVG Icons Definition -->
-    <svg style="display:none;">
-        <symbol id="svg-star" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></symbol>
-        <symbol id="svg-person" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></symbol>
-        <symbol id="svg-restaurant" viewBox="0 0 24 24"><path d="M16 6v8h3v8h-3v-2h-2v2H9v-2H7v2H4v-8h3V6H4V4h16v2h-4zm-5 0H9v6h2V6zm4 0h-2v6h2V6z"/></symbol>
-        <symbol id="svg-chat" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></symbol>
-        <symbol id="svg-settings" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></symbol>
-        <symbol id="svg-google" viewBox="0 0 24 24"><path d="M21.35 11.1H12.18V13.83H18.67C18.36 17.64 15.19 19.27 12.19 19.27C8.36 19.27 5.03 16.09 5.03 12.24C5.03 8.39 8.36 5.21 12.19 5.21C14.03 5.21 15.62 5.82 16.91 6.99L19.17 4.74C17.04 2.88 14.71 2 12.19 2C6.92 2 2.73 6.62 2.73 12.24C2.73 17.86 6.92 22.48 12.19 22.48C17.66 22.48 21.57 18.31 21.57 12.49C21.57 11.97 21.48 11.53 21.35 11.1Z"/></symbol>
-        <symbol id="svg-arrow-right" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></symbol>
-        <symbol id="svg-trash-no" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4zM3.343 3.343l17.314 17.314M20.657 3.343L3.343 20.657"/></symbol> <!-- Simbolo de No + Papelera -->
-        <symbol id="svg-chart-up" viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></symbol>
-    </svg>
-
-    <div class="app-container">
-        <!-- Slide 0: Título e Introducción -->
-        <div class="slide active" id="slide0">
-            <h2 style="font-size: 1.8em; color: var(--service-color);">Tu Reputación Online, Optimizada</h2>
-            <div class="visual-area">
-                 <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTIwLjY0IDEyLjIxbC04LjQ2LjAwMkwxMi4xOCA5LjQzbDYuMzQtLjAwMWMtLjI4LTMuNDctMy4xOC01LjExLTYuMzQtNS4xMUM4LjU2IDQuMyA1LjY3IDcuMTkgNS42NyAxMC44MWMwIDMuNjIgMi44OSA2LjUxIDYuNTEgNi41MWMzLjIgMCA1LjY3LTEuNDYgNi4yMi00LjQybC02LjIyLjAwMnYtMi42MWg4LjQ2Yy4wOS41MS4xMyAxLjAzLjEzIDEuNTZjMCA1LjM5LTMuNzcgOS4yNy04LjU5IDkuMjdDNy4xOCAyMS41MyAzIDE3LjM1IDMgMTIuMDhjMC01LjI3IDQuMTgtOS40NSA4LjU5LTkuNDVjMy4wMyAwIDUuNTMuNzkgNy4yMyAyLjYxbDIuMTItMi4xMkMyMC4xNiAxLjEgMTcuNDQgMCAxMi40MSAwQzUuNTYgMCAwIDUuNTYgMCAxMi4wOGMwIDYuNTIgNS41NiAxMS45MiAxMi40MSAxMS45MmM1LjQ5IDAgOC44NC0zLjQ3IDguODQtOC4zNCAwLS41OS0uMDQtMS4xOC0uMTMtMS43NnoiLz48cGF0aCBmaWxsPSIjMzRBODUzIiBkPSJNMTIgMjAuNTNsMS41MS0uOTRjLjgyIDEuNjMgMi4xMyAyLjYxIDQuMSAzLjExbC0xLjIgMi4wNGMtMS41Ny0uNjYtMi45LTEuNzYtMy40MS0zLjI1eiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik0xOS44NiAxNi4xNWwtLjYyIDEuMDRjLTEuMDYtLjgyLTEuNzYtMi4wMy0yLjAzLTMuMzNsMS4yOC0uNzdjLjE5IDEuNDQuNzcgMi43NSAxLjM3IDMuMDZ6Ii8+PHBhdGggZmlsbD0iI0VBNEMzQiIgZD0iTTE5Ljg5IDcuMTJsLjM3LTEuMDNjLTEuMDMtMS4yOC0yLjYxLTIuMjUtNC4xOS0yLjQ2bC0uNDkgMS4zN2MxLjQ4LjE2IDIuNjEuNzcgMy4zMyAxLjM3bDEuMDMtLjI1eiIvPjwvZz48L3N2Zz4=" alt="Google Icon with Stars" style="width:80px; height:80px; margin-bottom:15px;">
-                <span style="font-size: 3em; color:var(--google-yellow)">★★★★★</span>
-            </div>
-            <p>Descubre cómo un flujo inteligente de reseñas impulsa tu negocio.</p>
-            <p class="slide-text">Toca para continuar...</p>
-        </div>
-
-        <!-- ESCENA 1: El Problema -->
-        <div class="slide" id="slide1">
-            <h2>El Problema: Reseñas Inconsistentes</h2>
-            <div class="visual-area">
-                <div class="gmaps-profile-mock">
-                    <div class="header">
-                        <div class="profile-pic">🍕</div>
-                        <div>
-                            <div class="name">Pizzería "El Volcán"</div>
-                            <div class="rating-summary">
-                                <span class="stars-big">★★★</span>☆☆ <span style="font-weight:bold; margin-left:5px;">3.8</span>
-                                <span class="review-count">(150 reseñas)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="review-item positive">
-                        <div class="stars-small" style="color:var(--google-yellow)">★★★★★</div>
-                        <p>"¡La mejor pizza!"</p>
-                    </div>
-                    <div class="review-item neutral">
-                        <div class="stars-small" style="color:var(--google-yellow)">★★★☆☆</div>
-                        <p>"Estuvo bien, pero servicio lento..."</p>
-                    </div>
-                    <div class="review-item negative">
-                        <div class="stars-small" style="color:var(--google-red)">★☆☆☆☆</div>
-                        <p>"Mala experiencia, no volveré."</p>
-                    </div>
-                </div>
-                <div style="display:flex; margin-top:10px;">
-                    <span class="customer-icon doubtful">🤔</span>
-                    <span class="customer-icon doubtful">😟</span>
-                    <span class="customer-icon doubtful" style="transform: rotateY(180deg);">🚶</span>
-                </div>
-            </div>
-            <p class="slide-text">"Reseñas inconsistentes = Clientes perdidos"</p>
-        </div>
-
-        <!-- ESCENA 2: Cliente Quiere Dejar Feedback -->
-        <div class="slide" id="slide2">
-            <h2>Cada Cliente Tiene una Voz</h2>
-            <div class="visual-area">
-                <span style="font-size: 4em; margin-bottom:15px;">😊</span>
-                <p>Cliente feliz en tu restaurante.</p>
-                <svg class="icon" style="fill:var(--text-color); margin:10px 0; transform: scale(1.5);"><use href="#svg-chat"></use></svg>
-                <p>Listo para compartir su experiencia...</p>
-            </div>
-             <p class="slide-text">"¿Pero dónde y cómo lo hará?"</p>
-        </div>
-
-        <!-- ESCENA 3: Entra TU SERVICIO -->
-        <div class="slide" id="slide3">
-            <h2>¡Aquí Entra Mi Servicio!</h2>
-            <h3>El Filtro Inteligente de Feedback</h3>
-            <div class="visual-area">
-                <div class="feedback-form-mock">
-                    <p><strong>¿Cómo fue tu experiencia hoy?</strong></p>
-                    <div class="feedback-stars">
-                        <span class="star-selectable">★</span><span class="star-selectable">★</span><span class="star-selectable">★</span><span class="star-selectable">★</span><span class="star-selectable">★</span>
-                    </div>
-                    <p style="font-size:0.8em;">(El cliente selecciona estrellas aquí)</p>
-                </div>
-                
-                <div style="display:flex; justify-content:space-around; width:100%; margin-top:15px;">
-                    <div style="text-align:center; width:45%;">
-                        <p style="font-size:0.8em; margin-bottom:5px;">Si < 4 estrellas:</p>
-                        <div class="flow-arrow" style="color:var(--service-color)">➔</div>
-                        <div class="internal-resolution-mock">
-                            <svg class="icon-small" style="fill: #3f51b5;"><use href="#svg-chat"></use></svg> Resolvemos
-                        </div>
-                        <p style="font-size:0.75em; margin-top:5px;">Feedback valioso para mejorar ¡en privado!</p>
-                    </div>
-                    <div style="text-align:center; width:45%;">
-                         <p style="font-size:0.8em; margin-bottom:5px;">Si 5 estrellas:</p>
-                        <div class="flow-arrow" style="color:var(--google-green)">➔</div>
-                        <div class="google-redirect-mock">
-                            <svg class="icon-small" style="fill: var(--google-green);"><use href="#svg-google"></use></svg> Google
-                        </div>
-                        <p style="font-size:0.75em; margin-top:5px;">¡Comparte tu alegría en Google!</p>
-                    </div>
-                </div>
-                 <div class="no-delete-icon">
-                    <svg><use href="#svg-trash-no"></use></svg>
-                    <span>NO se borran reseñas de Google. Se guía el feedback.</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- ESCENA 4: El Resultado -->
-        <div class="slide" id="slide4">
-            <h2>Resultado: Perfil Transformado</h2>
-            <div class="visual-area">
-                 <div class="gmaps-profile-mock">
-                    <div class="header">
-                        <div class="profile-pic" style="background-color:var(--google-green)">🌟</div>
-                        <div>
-                            <div class="name">Pizzería "El Volcán"</div>
-                            <div class="rating-summary">
-                                <span class="stars-big" style="color:var(--google-yellow)">★★★★★</span> <span style="font-weight:bold; margin-left:5px;">4.9</span>
-                                <span class="review-count">(+450 reseñas)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="review-item positive">
-                        <div class="stars-small" style="color:var(--google-yellow)">★★★★★</div>
-                        <p>"¡Increíble! Servicio espectacular!"</p>
-                    </div>
-                    <div class="review-item positive">
-                        <div class="stars-small" style="color:var(--google-yellow)">★★★★★</div>
-                        <p>"La mejor atención, ¡volveremos!"</p>
-                    </div>
-                    <div class="review-item positive">
-                        <div class="stars-small" style="color:var(--google-yellow)">★★★★★</div>
-                        <p>"Súper recomendado, calidad top."</p>
-                    </div>
-                </div>
-            </div>
-            <p class="slide-text">"Reputación Impecable. Solo lo Mejor en Google."</p>
-        </div>
-
-        <!-- ESCENA 5: El Impacto -->
-        <div class="slide" id="slide5">
-            <h2>Impacto: Confianza y Más Clientes</h2>
-            <div class="visual-area">
-                <span style="font-size: 3em; color:var(--google-yellow); margin-bottom:10px;">★★★★★</span>
-                <div style="display:flex; margin-bottom:15px;">
-                    <span class="customer-icon happy">😊</span>
-                    <span class="customer-icon happy">😍</span>
-                    <span class="customer-icon happy">👍</span>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                    <span class="customer-icon happy" style="font-size:1.5em">🚶</span>
-                    <svg class="icon" style="fill: var(--accent-color);"><use href="#svg-arrow-right"></use></svg>
-                    <svg class="icon" style="fill: var(--accent-color); transform:scale(1.8);"><use href="#svg-restaurant"></use></svg>
-                </div>
-                <div class="graph-mock">
-                    <div class="bar bar1" style="height:30%;"></div> <!-- Antes -->
-                    <div class="bar bar2" style="height:80%;"></div> <!-- Después -->
-                </div>
-                <p style="font-size:0.8em; margin-top:5px;">Aumento en visitas y reservas</p>
-            </div>
-            <p class="slide-text">"Más Confianza = Más Clientes. Tu Pizzería Favorita."</p>
-        </div>
-
-        <!-- ESCENA 6: Llamada a la Acción Final -->
-        <div class="slide" id="slide6">
-            <h2>¡Brilla en Google Maps!</h2>
-            <div class="visual-area" style="min-height:auto;">
-                <!-- Aquí podrías poner tu logo si tienes uno en SVG o como imagen base64 -->
-                <!-- <img src="tu_logo_base64_o_svg_inline" alt="Logo Braulin Betancourt" style="width:100px; margin-bottom:15px;"> -->
-                <h3 style="color:var(--service-color); font-size:1.5em; margin-bottom:10px;">Braulin Betancourt</h3>
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; padding:5px 10px; border:1px solid var(--medium-gray); border-radius:4px;">
-                    <svg class="icon" style="fill:var(--google-blue);"><use href="#svg-google"></use></svg>
-                    <span style="font-size:0.9em;">Google Partner</span>
-                </div>
-            </div>
-            <p>Deja que te ayude a transformar tus reseñas y atraer más clientes.</p>
-            <a href="mailto:braulin.betancourt@email.com?subject=Solicitud de Demostración - Servicio Reseñas Google Maps" class="cta-button" id="finalCta">Solicitar Demostración</a>
-            <p style="font-size:0.7em; margin-top:25px; color:#999;">© <span id="year"></span> Braulin Betancourt. Todos los derechos reservados.</p>
-        </div>
-
-        <div class="progress-dots">
-            <!-- Dots se generarán con JS -->
-        </div>
+    <h1>Dashboard de Análisis para Aviator</h1>
+    <p>Esta herramienta analiza datos históricos de multiplicadores para identificar patrones y sugerir momentos potenciales donde el multiplicador podría superar 3x, 5x o 10x, basado en análisis estadístico. Recuerda: esto es solo para estudio y maximizar tu tiempo; el juego es aleatorio y no garantiza resultados.</p>
+    
+    <canvas id="multiplierChart"></canvas>
+    <div id="predictions">
+        <h2>Predicciones y Señales</h2>
+        <ul id="signals"></ul>
     </div>
 
     <script>
-        document.getElementById('year').textContent = new Date().getFullYear();
+        // Firebase configuration (usa la tuya)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuEnNg5XutDF3Ka90o6GFKTazBLR9NnSs",
+            authDomain: "aviator-analyzer-b29a7.firebaseapp.com",
+            databaseURL: "https://aviator-analyzer-b29a7-default-rtdb.firebaseio.com",
+            projectId: "aviator-analyzer-b29a7",
+            storageBucket: "aviator-analyzer-b29a7.firebasestorage.app",
+            messagingSenderId: "575063626276",
+            appId: "1:575063626276:web:5f640e41f0ad791d6a3eb1",
+            measurementId: "G-325QCBSQMH"
+        };
 
-        const appContainer = document.querySelector('.app-container');
-        const slides = document.querySelectorAll('.slide');
-        const progressDotsContainer = document.querySelector('.progress-dots');
-        let currentSlideIndex = 0;
+        // Inicializar Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database(app);
+        const crashesRef = database.ref('crashes');
 
-        slides.forEach((slide, index) => {
-            const dot = document.createElement('div');
-            dot.classList.add('dot');
-            if (index === 0) dot.classList.add('active');
-            dot.addEventListener('click', (e) => {
-                e.stopPropagation();
-                goToSlide(index);
+        // Configuración del análisis
+        const minHistoryForPrediction = 10;
+        const lookbackForPrediction = 5;
+        const predictionThresholds = [3, 5, 10];  // Señales para >3x, >5x, >10x
+        let localCrashes = [];
+        let net = new brain.NeuralNetwork({ hiddenLayers: [3] });
+        let chart;
+
+        // Normalizar valores
+        function normalize(value) {
+            return Math.log(value + 1) / Math.log(100 + 1);
+        }
+
+        // Entrenar modelo
+        function trainModel() {
+            if (localCrashes.length < minHistoryForPrediction + lookbackForPrediction) return;
+            const data = [];
+            for (let i = lookbackForPrediction; i < localCrashes.length; i++) {
+                const input = localCrashes.slice(i - lookbackForPrediction, i).map(normalize);
+                const output = predictionThresholds.map(threshold => localCrashes[i] > threshold ? 1 : 0);
+                data.push({ input, output });
+            }
+            net.train(data, { iterations: 200, log: true, logPeriod: 50 });
+            console.log('Modelo entrenado.');
+        }
+
+        // Predecir para próximo round
+        function predictNext() {
+            if (localCrashes.length < lookbackForPrediction) return [];
+            const input = localCrashes.slice(-lookbackForPrediction).map(normalize);
+            const predictions = net.run(input);
+            const signals = predictionThresholds.map((threshold, index) => {
+                const confidence = predictions[index];
+                return confidence > 0.5 ? `Señal potencial para >${threshold}x (confianza: ${Math.round(confidence * 100)}%)` : null;
+            }).filter(signal => signal);
+            return signals;
+        }
+
+        // Actualizar gráfico
+        function updateChart() {
+            const ctx = document.getElementById('multiplierChart').getContext('2d');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: localCrashes.map((_, i) => `Ronda ${i + 1}`),
+                    datasets: [{
+                        label: 'Multiplicadores Históricos',
+                        data: localCrashes,
+                        borderColor: 'blue',
+                        fill: false
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } }
+                }
             });
-            progressDotsContainer.appendChild(dot);
+        }
+
+        // Mostrar señales
+        function showSignals(signals) {
+            const signalsList = document.getElementById('signals');
+            signalsList.innerHTML = '';
+            signals.forEach(signal => {
+                const li = document.createElement('li');
+                li.textContent = signal;
+                signalsList.appendChild(li);
+            });
+        }
+
+        // Escuchar datos en tiempo real
+        crashesRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            localCrashes = data ? Object.values(data) : [];
+            console.log(`Datos cargados: ${localCrashes.length} rondas.`);
+            if (localCrashes.length >= minHistoryForPrediction) {
+                trainModel();
+                updateChart();
+                const signals = predictNext();
+                showSignals(signals);
+            }
         });
-        const dots = progressDotsContainer.querySelectorAll('.dot');
 
-        function updateProgressDots() {
-            dots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentSlideIndex);
-            });
-        }
-        
-        // Animación de estrellas seleccionables en el slide 3
-        const feedbackStarsContainer = slides[3].querySelector('.feedback-stars'); // Slide 3 es el del filtro
-        if (feedbackStarsContainer) {
-            const selectableStars = feedbackStarsContainer.querySelectorAll('.star-selectable');
-            selectableStars.forEach((star, index) => {
-                star.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Evita que el clic en la estrella propague al slide
-                    selectableStars.forEach((s, i) => {
-                        s.classList.toggle('selected', i <= index);
-                        s.style.color = i <= index ? 'var(--google-yellow)' : 'rgba(255,255,255,0.5)';
-                    });
-                    // Opcional: simular el flujo después de seleccionar
-                    // if (index < 3) { console.log("Flujo interno"); } else { console.log("Flujo Google"); }
-                });
-            });
-        }
-
-
-        function goToSlide(index) {
-            if (index < 0 || index >= slides.length) return;
-
-            const previousSlide = slides[currentSlideIndex];
-            if (previousSlide) {
-                 previousSlide.classList.remove('active');
-                 previousSlide.classList.add('previous');
-            }
-            
-            // Resetear animaciones en el slide que se va a mostrar
-            const newSlide = slides[index];
-            const animatedElements = newSlide.querySelectorAll('.review-item, .bar');
-            animatedElements.forEach(el => {
-                el.style.animation = 'none';
-                // Forzar reflujo para reiniciar animación
-                // eslint-disable-next-line no-unused-expressions
-                el.offsetHeight; 
-                el.style.animation = ''; 
-            });
-            
-            // Limpiar clases 'previous' de slides no activos y no actuales
-            slides.forEach((s, i) => {
-                if (i !== index && s.classList.contains('previous') && i !== currentSlideIndex) {
-                    s.classList.remove('previous');
-                }
-            });
-
-
-            currentSlideIndex = index;
-            newSlide.classList.remove('previous');
-            newSlide.classList.add('active');
-            
-            updateProgressDots();
-        }
-        
-        appContainer.addEventListener('click', (event) => {
-            if (event.target.closest('a, button, .dot, .star-selectable')) {
-                 if (event.target.id === 'finalCta' || event.target.closest('#finalCta')) {
-                    return; // Permitir que el link del CTA funcione
-                }
-                if (event.target.closest('.dot') || event.target.closest('.star-selectable')) {
-                    return; // Ya manejado por sus propios listeners
-                }
-            }
-
-            if (currentSlideIndex < slides.length - 1) {
-                goToSlide(currentSlideIndex + 1);
-            }
-        });
+        console.log('Dashboard iniciado. Esperando datos...');
     </script>
-
 </body>
 </html>
